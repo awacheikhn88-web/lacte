@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestion des ventes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F6F1E7;
+    --paper:#FFFDF8;
+    --ink:#2B2119;
+    --ink-soft:#6B5E4F;
+    --line:#E4DAC7;
+    --gold:#C99A3E;
+    --gold-deep:#A87B28;
+    --teal:#24494A;
+    --teal-deep:#173232;
+    --green:#5C7A5E;
+    --green-bg:#E9EFE7;
+    --rust:#B5502F;
+    --rust-bg:#F5E6DF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{ font-family:'Fraunces',serif; }
+
+  /* ---- Header ---- */
+  header{
+    background:var(--teal);
+    color:var(--cream);
+    padding:22px 20px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;
+    right:-40px; top:-40px;
+    width:160px; height:160px;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, rgba(201,154,62,0.35), transparent 70%);
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px;
+    position:relative; z-index:1;
+  }
+  .brand svg{ width:38px; height:38px; flex-shrink:0; }
+  .brand-text .eyebrow{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--gold); font-weight:600; margin-bottom:2px;
+  }
+  .brand-text h1{ font-size:22px; margin:0; font-weight:600; color:#fff; }
+  .save-indicator{
+    position:absolute; right:20px; top:24px; z-index:1;
+    font-size:11px; color:rgba(246,241,231,0.6);
+    display:flex; align-items:center; gap:6px;
+  }
+  .save-dot{ width:6px; height:6px; border-radius:50%; background:var(--gold); transition:opacity .3s; }
+
+  /* ---- Layout ---- */
+  main{ max-width:760px; margin:0 auto; padding:18px 16px 60px; }
+
+  .cards{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+    margin-top:-14px; margin-bottom:22px; position:relative; z-index:2;
+  }
+  .card{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px;
+    padding:14px 14px 12px;
+    box-shadow:0 2px 10px rgba(43,33,25,0.05);
+  }
+  .card .label{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px;}
+  .card .value{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; line-height:1.15; }
+  .card.profit .value{ color:var(--green); }
+  .card.expense .value{ color:var(--rust); }
+  .card.revenue .value{ color:var(--teal); }
+  .card.stock .value{ color:var(--gold-deep); }
+
+  /* ---- Tabs ---- */
+  .tabs{
+    display:flex; gap:6px; margin-bottom:18px;
+    border-bottom:1px solid var(--line);
+  }
+  .tab-btn{
+    background:none; border:none; font-family:'Inter',sans-serif; font-weight:600;
+    font-size:13.5px; color:var(--ink-soft); padding:9px 12px; cursor:pointer;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab-btn.active{ color:var(--teal); border-bottom-color:var(--gold); }
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  section.block{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px;
+    padding:16px; margin-bottom:16px;
+  }
+  section.block h3{ font-size:15px; margin:0 0 12px; font-weight:600; color:var(--teal); }
+
+  form.inline-form{
+    display:grid; gap:8px; margin-bottom:14px;
+    padding-bottom:14px; border-bottom:1px dashed var(--line);
+  }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .row3{ display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:8px; }
+  label{ font-size:11px; color:var(--ink-soft); font-weight:600; display:block; margin-bottom:3px; }
+  input, select{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+    font-family:'Inter',sans-serif; font-size:13.5px; background:#fff; color:var(--ink);
+  }
+  input:focus, select:focus{ outline:2px solid var(--gold); outline-offset:1px; border-color:var(--gold); }
+  button.primary{
+    background:var(--teal); color:#fff; border:none; border-radius:8px;
+    padding:10px 14px; font-weight:600; font-size:13.5px; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  button.primary:hover{ background:var(--teal-deep); }
+  button.primary:active{ transform:translateY(1px); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+      color:var(--ink-soft); padding:6px 6px; border-bottom:1px solid var(--line); }
+  td{ padding:9px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  .muted{ color:var(--ink-soft); }
+  .num{ text-align:right; font-variant-numeric:tabular-nums; }
+  .del-btn{
+    background:none; border:none; color:var(--rust); cursor:pointer; font-size:16px;
+    padding:2px 6px; line-height:1; opacity:.7;
+  }
+  .del-btn:hover{ opacity:1; }
+  .edit-btn{
+    background:none; border:none; color:var(--gold-deep); cursor:pointer; font-size:13px;
+    padding:2px 4px; line-height:1; opacity:.75; margin-left:2px;
+  }
+  .edit-btn:hover{ opacity:1; }
+  .empty{ color:var(--ink-soft); font-size:13px; padding:14px 4px; text-align:center; }
+  .pill{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px;
+    border-radius:20px;
+  }
+  .pill.ok{ background:var(--green-bg); color:var(--green); }
+  .pill.low{ background:var(--rust-bg); color:var(--rust); }
+  .helptext{ font-size:11.5px; color:var(--ink-soft); margin:-6px 0 10px; }
+  footer{ text-align:center; font-size:11px; color:var(--ink-soft); padding:10px 0 30px; }
+
+  .loss-banner{
+    display:none;
+    background:var(--rust-bg); border:1px solid var(--rust);
+    color:var(--rust); font-weight:700; font-size:13px;
+    padding:10px 14px; border-radius:10px; margin-bottom:14px;
+    align-items:center; gap:8px;
+  }
+  .loss-banner.show{ display:flex; }
+  .ok-banner{
+    display:none;
+    background:var(--green-bg); border:1px solid var(--green);
+    color:var(--green); font-weight:700; font-size:13px;
+    padding:10px 14px; border-radius:10px; margin-bottom:14px;
+    align-items:center; gap:8px;
+  }
+  .ok-banner.show{ display:flex; }
+  .subnote{ font-size:10.5px; color:var(--ink-soft); font-weight:500; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 48 48" fill="none">
+      <path d="M8 20c0 13 7.2 21 16 21s16-8 16-21" stroke="#F6F1E7" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M6 20h36" stroke="#C99A3E" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M14 20c1-6 5-10 10-10s9 4 10 10" stroke="#F6F1E7" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    </svg>
+    <div class="brand-text">
+      <div class="eyebrow">Gestion privée</div>
+      <h1>Mes ventes &amp; stock</h1>
+    </div>
+  </div>
+  <div class="save-indicator"><span class="save-dot" id="saveDot"></span><span id="saveLabel">à jour</span></div>
+</header>
+
+<main>
+  <div class="loss-banner" id="lossBanner">⚠️ <span>Vous êtes en perte ce mois : les dépenses dépassent les ventes.</span></div>
+  <div class="ok-banner" id="okBanner">✓ <span id="okBannerText">Activité bénéficiaire.</span></div>
+
+  <div class="cards">
+    <div class="card revenue"><div class="label">Chiffre d'affaires</div><div class="value" id="cardRevenue">0 F</div></div>
+    <div class="card expense"><div class="label">Total dépenses</div><div class="value" id="cardCosts">0 F</div><div class="subnote">coût produits + frais + achats</div></div>
+    <div class="card profit" id="cardProfitBox"><div class="label" id="profitLabel">Bénéfice net</div><div class="value" id="cardProfit">0 F</div></div>
+    <div class="card stock"><div class="label">Unités en stock</div><div class="value" id="cardStock">0</div><div class="subnote">produits finis</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="ventes">Ventes</button>
+    <button class="tab-btn" data-tab="produits">Produits &amp; stock</button>
+    <button class="tab-btn" data-tab="achats">Achats &amp; matières</button>
+    <button class="tab-btn" data-tab="depenses">Dépenses</button>
+  </div>
+
+  <!-- VENTES -->
+  <div class="panel active" id="panel-ventes">
+    <section class="block">
+      <h3>Enregistrer une vente</h3>
+      <form class="inline-form" id="formVente">
+        <div class="row2">
+          <div>
+            <label>Produit</label>
+            <select id="venteProduit" required></select>
+          </div>
+          <div>
+            <label>Date</label>
+            <input type="date" id="venteDate" required>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Quantité vendue</label>
+            <input type="number" id="venteQte" min="1" step="1" placeholder="ex : 3" required>
+          </div>
+          <div>
+            <label>Prix de vente / unité (F)</label>
+            <input type="number" id="ventePrix" min="0" step="1" placeholder="auto">
+          </div>
+        </div>
+        <div id="venteStockInfo" class="helptext"></div>
+        <button type="submit" class="primary">Ajouter la vente</button>
+      </form>
+      <table>
+        <thead><tr><th>Date</th><th>Produit</th><th class="num">Qté</th><th class="num">Total</th><th class="num">Marge</th><th></th></tr></thead>
+        <tbody id="tblVentes"></tbody>
+      </table>
+      <div class="empty" id="emptyVentes" style="display:none;">Aucune vente enregistrée pour le moment.</div>
+    </section>
+  </div>
+
+  <!-- PRODUITS -->
+  <div class="panel" id="panel-produits">
+    <section class="block">
+      <h3>Ajouter un produit</h3>
+      <form class="inline-form" id="formProduit">
+        <div>
+          <label>Nom du produit</label>
+          <input type="text" id="prodNom" placeholder="ex : Pot de lait caillé 1kg" required>
+        </div>
+        <div class="row3">
+          <div>
+            <label>Unité</label>
+            <input type="text" id="prodUnite" placeholder="pot, litre..." value="pot">
+          </div>
+          <div>
+            <label>Coût de revient (F)</label>
+            <input type="number" id="prodCout" min="0" step="1" required>
+          </div>
+          <div>
+            <label>Prix de vente (F)</label>
+            <input type="number" id="prodPrix" min="0" step="1" required>
+          </div>
+        </div>
+        <div>
+          <label>Stock de départ</label>
+          <input type="number" id="prodStock" min="0" step="1" value="0">
+        </div>
+        <button type="submit" class="primary">Ajouter le produit</button>
+      </form>
+      <table>
+        <thead><tr><th>Produit</th><th class="num">Coût</th><th class="num">Vente</th><th class="num">Stock</th><th></th><th></th></tr></thead>
+        <tbody id="tblProduits"></tbody>
+      </table>
+      <div class="empty" id="emptyProduits" style="display:none;">Aucun produit pour le moment. Ajoutez votre premier produit ci-dessus.</div>
+    </section>
+
+    <section class="block">
+      <h3>Réapprovisionner le stock</h3>
+      <form class="inline-form" id="formRestock">
+        <div class="row2">
+          <div>
+            <label>Produit</label>
+            <select id="restockProduit" required></select>
+          </div>
+          <div>
+            <label>Quantité ajoutée</label>
+            <input type="number" id="restockQte" min="1" step="1" required>
+          </div>
+        </div>
+        <button type="submit" class="primary">Ajouter au stock</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- ACHATS / MATIERES PREMIERES -->
+  <div class="panel" id="panel-achats">
+    <section class="block">
+      <h3>Ajouter un article acheté</h3>
+      <div class="helptext">Seaux, lait cru, lait caillé, étiquettes, livraison, ou tout autre article que vous achetez.</div>
+      <form class="inline-form" id="formMaterial">
+        <div class="row2">
+          <div>
+            <label>Nom de l'article</label>
+            <input type="text" id="matNom" placeholder="ex : Lait cru" required>
+          </div>
+          <div>
+            <label>Catégorie</label>
+            <select id="matCategorie">
+              <option>Seaux</option>
+              <option>Lait cru</option>
+              <option>Lait caillé</option>
+              <option>Étiquettes</option>
+              <option>Livraison</option>
+              <option>Autre</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Unité</label>
+            <input type="text" id="matUnite" placeholder="kg, L, unité..." value="unité">
+          </div>
+          <div>
+            <label>Stock de départ</label>
+            <input type="number" id="matStock" min="0" step="0.1" value="0">
+          </div>
+        </div>
+        <div>
+          <label>Prix de référence / unité (F) — facultatif</label>
+          <input type="number" id="matPrixRef" min="0" step="1" placeholder="laisser vide si variable (ex : livraison)">
+        </div>
+        <button type="submit" class="primary">Ajouter l'article</button>
+      </form>
+      <table>
+        <thead><tr><th>Article</th><th class="num">Prix réf.</th><th class="num">Restant</th><th></th></tr></thead>
+        <tbody id="tblMaterials"></tbody>
+      </table>
+      <div class="empty" id="emptyMaterials" style="display:none;">Aucun article pour le moment. Ajoutez-en un ci-dessus.</div>
+    </section>
+
+    <section class="block">
+      <h3>Enregistrer un achat</h3>
+      <form class="inline-form" id="formAchat">
+        <div class="row2">
+          <div>
+            <label>Article</label>
+            <select id="achatMateriel" required></select>
+          </div>
+          <div>
+            <label>Date</label>
+            <input type="date" id="achatDate" required>
+          </div>
+        </div>
+        <div class="row2">
+          <div>
+            <label>Quantité achetée</label>
+            <input type="number" id="achatQte" min="0" step="0.1" required>
+          </div>
+          <div>
+            <label>Prix unitaire (F)</label>
+            <input type="number" id="achatPrix" min="0" step="1" required>
+          </div>
+        </div>
+        <div id="achatPrixInfo" class="helptext"></div>
+        <button type="submit" class="primary">Ajouter l'achat</button>
+      </form>
+      <table>
+        <thead><tr><th>Date</th><th>Article</th><th class="num">Qté</th><th class="num">Coût total</th><th></th></tr></thead>
+        <tbody id="tblAchats"></tbody>
+      </table>
+      <div class="empty" id="emptyAchats" style="display:none;">Aucun achat enregistré pour le moment.</div>
+    </section>
+
+    <section class="block">
+      <h3>Enregistrer une utilisation</h3>
+      <div class="helptext">Quand vous consommez un article pour la production, retirez-le du stock ici.</div>
+      <form class="inline-form" id="formUsage">
+        <div class="row2">
+          <div>
+            <label>Article</label>
+            <select id="usageMateriel" required></select>
+          </div>
+          <div>
+            <label>Quantité utilisée</label>
+            <input type="number" id="usageQte" min="0" step="0.1" required>
+          </div>
+        </div>
+        <button type="submit" class="primary">Retirer du stock</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- DEPENSES -->
+  <div class="panel" id="panel-depenses">
+    <section class="block">
+      <h3>Ajouter une dépense</h3>
+      <div class="helptext">Frais généraux non liés à un produit précis : transport, emballage, communication, location...</div>
+      <form class="inline-form" id="formDepense">
+        <div class="row2">
+          <div>
+            <label>Date</label>
+            <input type="date" id="depDate" required>
+          </div>
+          <div>
+            <label>Montant (F)</label>
+            <input type="number" id="depMontant" min="0" step="1" required>
+          </div>
+        </div>
+        <div>
+          <label>Description</label>
+          <input type="text" id="depDesc" placeholder="ex : essence livraison Pikine" required>
+        </div>
+        <button type="submit" class="primary">Ajouter la dépense</button>
+      </form>
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th class="num">Montant</th><th></th></tr></thead>
+        <tbody id="tblDepenses"></tbody>
+      </table>
+      <div class="empty" id="emptyDepenses" style="display:none;">Aucune dépense enregistrée pour le moment.</div>
+    </section>
+  </div>
+
+  <footer>Toutes les données restent privées, visibles uniquement par vous.</footer>
+</main>
+
+<script>
+const STORAGE_KEY = 'lacte-gestion-data';
+let state = { products: [], sales: [], expenses: [], materials: [], purchases: [], usages: [] };
+let saveTimer = null;
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n){ return Math.round(n).toLocaleString('fr-FR') + ' F'; }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      state = JSON.parse(res.value);
+      state.products = state.products || [];
+      state.sales = state.sales || [];
+      state.expenses = state.expenses || [];
+      state.materials = state.materials || [];
+      state.purchases = state.purchases || [];
+      state.usages = state.usages || [];
+    } else {
+      seedDefaults();
+      await persist();
+    }
+  }catch(e){
+    seedDefaults();
+  }
+  renderAll();
+}
+
+function seedDefaults(){
+  state = {
+    products: [
+      { id: uid(), name:'Pot de lait caillé 1kg', unit:'pot', cost:400, price:700, stock:10 },
+      { id: uid(), name:'Pot de lait caillé 5kg', unit:'pot', cost:1800, price:3000, stock:5 },
+      { id: uid(), name:'Pot de lait caillé 20kg', unit:'pot', cost:6800, price:11000, stock:2 }
+    ],
+    sales: [],
+    expenses: [],
+    materials: [
+      { id: uid(), name:'Seau 1kg', category:'Seaux', unit:'unité', stock:0, refPrice:300 },
+      { id: uid(), name:'Seau 5kg', category:'Seaux', unit:'unité', stock:0, refPrice:1067 },
+      { id: uid(), name:'Lait cru', category:'Lait cru', unit:'kg', stock:0, refPrice:2800 },
+      { id: uid(), name:'Étiquettes', category:'Étiquettes', unit:'unité', stock:0, refPrice:null },
+      { id: uid(), name:'Livraison', category:'Livraison', unit:'course', stock:0, refPrice:null }
+    ],
+    purchases: [],
+    usages: []
+  };
+}
+
+async function persist(){
+  const dot = document.getElementById('saveDot');
+  const label = document.getElementById('saveLabel');
+  label.textContent = 'enregistrement...';
+  dot.style.opacity = '1';
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    label.textContent = 'à jour';
+  }catch(e){
+    label.textContent = 'erreur de sauvegarde';
+  }
+  setTimeout(()=>{ dot.style.opacity = '0.35'; }, 600);
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(persist, 250);
+}
+
+/* ---------- RENDER ---------- */
+function renderAll(){
+  renderDashboard();
+  renderProductSelects();
+  renderProduits();
+  renderVentes();
+  renderDepenses();
+  renderMaterialSelects();
+  renderMaterials();
+  renderAchats();
+}
+
+function renderDashboard(){
+  const revenue = state.sales.reduce((s,v)=> s + v.qty*v.price, 0);
+  const cogs = state.sales.reduce((s,v)=>{
+    const p = state.products.find(p=>p.id===v.productId);
+    return s + (p ? p.cost*v.qty : 0);
+  }, 0);
+  const expenses = state.expenses.reduce((s,d)=> s + d.amount, 0);
+  const purchases = state.purchases.reduce((s,a)=> s + a.qty*a.unitPrice, 0);
+  const totalCosts = cogs + expenses + purchases;
+  const profit = revenue - totalCosts;
+  const stockUnits = state.products.reduce((s,p)=> s + (p.stock||0), 0);
+
+  document.getElementById('cardRevenue').textContent = fmt(revenue);
+  document.getElementById('cardCosts').textContent = fmt(totalCosts);
+  document.getElementById('cardProfit').textContent = fmt(Math.abs(profit));
+  document.getElementById('cardStock').textContent = stockUnits.toLocaleString('fr-FR');
+
+  const profitBox = document.getElementById('cardProfitBox');
+  const profitLabel = document.getElementById('profitLabel');
+  const lossBanner = document.getElementById('lossBanner');
+  const okBanner = document.getElementById('okBanner');
+  if(profit < 0){
+    profitBox.classList.remove('profit'); profitBox.classList.add('expense');
+    profitLabel.textContent = 'Perte nette';
+    lossBanner.classList.add('show');
+    okBanner.classList.remove('show');
+  } else {
+    profitBox.classList.remove('expense'); profitBox.classList.add('profit');
+    profitLabel.textContent = 'Bénéfice net';
+    lossBanner.classList.remove('show');
+    if(revenue > 0){
+      okBanner.classList.add('show');
+      document.getElementById('okBannerText').textContent =
+        `Activité bénéficiaire : ${fmt(profit)} de bénéfice net.`;
+    } else {
+      okBanner.classList.remove('show');
+    }
+  }
+}
+
+function renderProductSelects(){
+  ['venteProduit','restockProduit'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = state.products.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    if(current) sel.value = current;
+  });
+  updateVenteHelp();
+}
+
+function renderProduits(){
+  const tbody = document.getElementById('tblProduits');
+  const empty = document.getElementById('emptyProduits');
+  if(state.products.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = state.products.map(p=>{
+    const low = p.stock <= 2;
+    return `<tr>
+      <td>${escapeHtml(p.name)}<div class="muted" style="font-size:11px;">${escapeHtml(p.unit||'')}</div></td>
+      <td class="num">${fmt(p.cost)}</td>
+      <td class="num">${fmt(p.price)}</td>
+      <td class="num">
+        <span class="pill ${low?'low':'ok'}">${p.stock}</span>
+        <button class="edit-btn" onclick="editStock('product','${p.id}')" title="Modifier le stock">✎</button>
+      </td>
+      <td></td>
+      <td><button class="del-btn" onclick="deleteProduct('${p.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderVentes(){
+  const tbody = document.getElementById('tblVentes');
+  const empty = document.getElementById('emptyVentes');
+  const sorted = [...state.sales].sort((a,b)=> b.date.localeCompare(a.date));
+  if(sorted.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = sorted.map(v=>{
+    const p = state.products.find(p=>p.id===v.productId);
+    const total = v.qty*v.price;
+    const margin = p ? (v.price - p.cost)*v.qty : 0;
+    return `<tr>
+      <td>${formatDate(v.date)}</td>
+      <td>${p ? escapeHtml(p.name) : '<span class="muted">produit supprimé</span>'}</td>
+      <td class="num">${v.qty}</td>
+      <td class="num">${fmt(total)}</td>
+      <td class="num" style="color:var(--green)">${fmt(margin)}</td>
+      <td><button class="del-btn" onclick="deleteSale('${v.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDepenses(){
+  const tbody = document.getElementById('tblDepenses');
+  const empty = document.getElementById('emptyDepenses');
+  const sorted = [...state.expenses].sort((a,b)=> b.date.localeCompare(a.date));
+  if(sorted.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = sorted.map(d=>`<tr>
+    <td>${formatDate(d.date)}</td>
+    <td>${escapeHtml(d.desc)}</td>
+    <td class="num" style="color:var(--rust)">${fmt(d.amount)}</td>
+    <td><button class="del-btn" onclick="deleteExpense('${d.id}')" title="Supprimer">✕</button></td>
+  </tr>`).join('');
+}
+
+function renderMaterialSelects(){
+  ['achatMateriel','usageMateriel'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = state.materials.map(m=>`<option value="${m.id}">${escapeHtml(m.name)} (${escapeHtml(m.unit)})</option>`).join('');
+    if(current) sel.value = current;
+  });
+  updateAchatHelp();
+}
+
+function renderMaterials(){
+  const tbody = document.getElementById('tblMaterials');
+  const empty = document.getElementById('emptyMaterials');
+  if(state.materials.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = state.materials.map(m=>{
+    const low = m.stock <= 2;
+    return `<tr>
+      <td>${escapeHtml(m.name)}<div class="muted" style="font-size:11px;">${escapeHtml(m.category)}</div></td>
+      <td class="num muted">${m.refPrice ? fmt(m.refPrice) : '—'}</td>
+      <td class="num">
+        <span class="pill ${low?'low':'ok'}">${m.stock} ${escapeHtml(m.unit)}</span>
+        <button class="edit-btn" onclick="editStock('material','${m.id}')" title="Modifier le stock">✎</button>
+      </td>
+      <td><button class="del-btn" onclick="deleteMaterial('${m.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAchats(){
+  const tbody = document.getElementById('tblAchats');
+  const empty = document.getElementById('emptyAchats');
+  const sorted = [...state.purchases].sort((a,b)=> b.date.localeCompare(a.date));
+  if(sorted.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = sorted.map(a=>{
+    const m = state.materials.find(m=>m.id===a.materialId);
+    return `<tr>
+      <td>${formatDate(a.date)}</td>
+      <td>${m ? escapeHtml(m.name) : '<span class="muted">article supprimé</span>'}</td>
+      <td class="num">${a.qty}</td>
+      <td class="num" style="color:var(--rust)">${fmt(a.qty*a.unitPrice)}</td>
+      <td><button class="del-btn" onclick="deletePurchase('${a.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function formatDate(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'short'});
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function updateVenteHelp(){
+  const sel = document.getElementById('venteProduit');
+  const p = state.products.find(p=>p.id===sel.value);
+  const info = document.getElementById('venteStockInfo');
+  const priceInput = document.getElementById('ventePrix');
+  if(p){
+    info.textContent = `Stock disponible : ${p.stock} ${p.unit||'unité(s)'} · prix habituel ${fmt(p.price)}`;
+    if(!priceInput.dataset.touched) priceInput.value = p.price;
+  } else {
+    info.textContent = '';
+  }
+}
+
+/* ---------- ACTIONS ---------- */
+document.getElementById('venteProduit').addEventListener('change', ()=>{
+  document.getElementById('ventePrix').dataset.touched = '';
+  updateVenteHelp();
+});
+document.getElementById('ventePrix').addEventListener('input', e=>{ e.target.dataset.touched = '1'; });
+
+document.getElementById('achatMateriel').addEventListener('change', updateAchatHelp);
+document.getElementById('achatPrix').addEventListener('input', e=>{ e.target.dataset.touched = '1'; });
+
+function updateAchatHelp(){
+  const sel = document.getElementById('achatMateriel');
+  const m = state.materials.find(m=>m.id===sel.value);
+  const info = document.getElementById('achatPrixInfo');
+  const priceInput = document.getElementById('achatPrix');
+  priceInput.dataset.touched = '';
+  if(m && m.refPrice){
+    info.textContent = `Prix de référence : ${fmt(m.refPrice)} / ${m.unit}`;
+    priceInput.value = m.refPrice;
+  } else if(m){
+    info.textContent = `Prix variable pour "${m.name}" — indiquez le prix de cet achat.`;
+    priceInput.value = '';
+  } else {
+    info.textContent = '';
+  }
+}
+
+document.getElementById('formProduit').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.products.push({
+    id: uid(),
+    name: document.getElementById('prodNom').value.trim(),
+    unit: document.getElementById('prodUnite').value.trim() || 'unité',
+    cost: Number(document.getElementById('prodCout').value)||0,
+    price: Number(document.getElementById('prodPrix').value)||0,
+    stock: Number(document.getElementById('prodStock').value)||0
+  });
+  e.target.reset();
+  document.getElementById('prodUnite').value = 'pot';
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formVente').addEventListener('submit', e=>{
+  e.preventDefault();
+  const productId = document.getElementById('venteProduit').value;
+  const qty = Number(document.getElementById('venteQte').value);
+  const priceInput = document.getElementById('ventePrix');
+  const p = state.products.find(p=>p.id===productId);
+  if(!p){ alert('Ajoutez d\'abord un produit.'); return; }
+  const price = priceInput.value ? Number(priceInput.value) : p.price;
+  if(qty > p.stock){
+    if(!confirm(`Le stock actuel est de ${p.stock} ${p.unit}. Enregistrer quand même la vente de ${qty} ?`)) return;
+  }
+  state.sales.push({ id: uid(), productId, date: document.getElementById('venteDate').value || todayStr(), qty, price });
+  p.stock = Math.max(0, p.stock - qty);
+  e.target.reset();
+  priceInput.dataset.touched = '';
+  document.getElementById('venteDate').value = todayStr();
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formRestock').addEventListener('submit', e=>{
+  e.preventDefault();
+  const p = state.products.find(p=>p.id===document.getElementById('restockProduit').value);
+  const qty = Number(document.getElementById('restockQte').value);
+  if(p && qty>0){ p.stock += qty; }
+  e.target.reset();
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formDepense').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.expenses.push({
+    id: uid(),
+    date: document.getElementById('depDate').value || todayStr(),
+    desc: document.getElementById('depDesc').value.trim(),
+    amount: Number(document.getElementById('depMontant').value)||0
+  });
+  e.target.reset();
+  document.getElementById('depDate').value = todayStr();
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formMaterial').addEventListener('submit', e=>{
+  e.preventDefault();
+  state.materials.push({
+    id: uid(),
+    name: document.getElementById('matNom').value.trim(),
+    category: document.getElementById('matCategorie').value,
+    unit: document.getElementById('matUnite').value.trim() || 'unité',
+    stock: Number(document.getElementById('matStock').value)||0,
+    refPrice: document.getElementById('matPrixRef').value ? Number(document.getElementById('matPrixRef').value) : null
+  });
+  e.target.reset();
+  document.getElementById('matUnite').value = 'unité';
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formAchat').addEventListener('submit', e=>{
+  e.preventDefault();
+  const materialId = document.getElementById('achatMateriel').value;
+  const m = state.materials.find(m=>m.id===materialId);
+  if(!m){ alert('Ajoutez d\'abord un article.'); return; }
+  const qty = Number(document.getElementById('achatQte').value);
+  const unitPrice = Number(document.getElementById('achatPrix').value);
+  state.purchases.push({ id: uid(), materialId, date: document.getElementById('achatDate').value || todayStr(), qty, unitPrice });
+  m.stock += qty;
+  e.target.reset();
+  document.getElementById('achatDate').value = todayStr();
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formUsage').addEventListener('submit', e=>{
+  e.preventDefault();
+  const materialId = document.getElementById('usageMateriel').value;
+  const m = state.materials.find(m=>m.id===materialId);
+  const qty = Number(document.getElementById('usageQte').value);
+  if(!m){ alert('Ajoutez d\'abord un article.'); return; }
+  if(qty > m.stock){
+    if(!confirm(`Le stock actuel est de ${m.stock} ${m.unit}. Retirer quand même ${qty} ?`)) return;
+  }
+  state.usages.push({ id: uid(), materialId, date: todayStr(), qty });
+  m.stock = Math.max(0, m.stock - qty);
+  e.target.reset();
+  renderAll(); scheduleSave();
+});
+
+function deleteMaterial(id){
+  if(!confirm('Supprimer cet article ? Les achats déjà enregistrés seront conservés.')) return;
+  state.materials = state.materials.filter(m=>m.id!==id);
+  renderAll(); scheduleSave();
+}
+function deletePurchase(id){
+  const a = state.purchases.find(a=>a.id===id);
+  if(a){
+    const m = state.materials.find(m=>m.id===a.materialId);
+    if(m) m.stock = Math.max(0, m.stock - a.qty);
+  }
+  state.purchases = state.purchases.filter(a=>a.id!==id);
+  renderAll(); scheduleSave();
+}
+
+function editStock(type, id){
+  const list = type === 'product' ? state.products : state.materials;
+  const item = list.find(x=>x.id===id);
+  if(!item) return;
+  const unitLabel = type === 'product' ? (item.unit||'unité') : item.unit;
+  const input = prompt(`Nouveau stock pour "${item.name}" (${unitLabel}) :`, item.stock);
+  if(input === null) return;
+  const value = Number(input);
+  if(isNaN(value) || value < 0){ alert('Merci d\'entrer un nombre valide.'); return; }
+  item.stock = value;
+  renderAll(); scheduleSave();
+}
+
+function deleteProduct(id){
+  if(!confirm('Supprimer ce produit ? Les ventes déjà enregistrées seront conservées.')) return;
+  state.products = state.products.filter(p=>p.id!==id);
+  renderAll(); scheduleSave();
+}
+function deleteSale(id){
+  const sale = state.sales.find(v=>v.id===id);
+  if(sale){
+    const p = state.products.find(p=>p.id===sale.productId);
+    if(p) p.stock += sale.qty;
+  }
+  state.sales = state.sales.filter(v=>v.id!==id);
+  renderAll(); scheduleSave();
+}
+function deleteExpense(id){
+  state.expenses = state.expenses.filter(d=>d.id!==id);
+  renderAll(); scheduleSave();
+}
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- INIT ---------- */
+document.getElementById('venteDate').value = todayStr();
+document.getElementById('depDate').value = todayStr();
+document.getElementById('achatDate').value = todayStr();
+loadState();
+</script>
+</body>
+</html>
