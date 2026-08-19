@@ -142,6 +142,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="ventes">Ventes</button>
     <button class="tab-btn" data-tab="produits">Produits &amp; stock</button>
+    <button class="tab-btn" data-tab="materiel">Matériel</button>
     <button class="tab-btn" data-tab="depenses">Dépenses</button>
   </div>
 
@@ -237,6 +238,58 @@
     </section>
   </div>
 
+  <!-- MATERIEL -->
+  <div class="panel" id="panel-materiel">
+    <section class="block">
+      <h3>Ajouter du matériel</h3>
+      <div class="helptext">Seaux vides et autre matériel réutilisable. Le prix unitaire × la quantité est automatiquement ajouté à vos dépenses.</div>
+      <form class="inline-form" id="formMateriel">
+        <div>
+          <label>Nom du matériel</label>
+          <input type="text" id="matNom" placeholder="ex : Seau 1kg" required>
+        </div>
+        <div class="row3">
+          <div>
+            <label>Unité</label>
+            <input type="text" id="matUnite" placeholder="unité" value="unité">
+          </div>
+          <div>
+            <label>Prix unitaire (F)</label>
+            <input type="number" id="matPrix" min="0" step="1" required>
+          </div>
+          <div>
+            <label>Quantité</label>
+            <input type="number" id="matStock" min="0" step="1" value="0">
+          </div>
+        </div>
+        <button type="submit" class="primary">Ajouter le matériel</button>
+      </form>
+      <table>
+        <thead><tr><th>Matériel</th><th class="num">Prix unit.</th><th class="num">Restant</th><th></th></tr></thead>
+        <tbody id="tblMateriel"></tbody>
+      </table>
+      <div class="empty" id="emptyMateriel" style="display:none;">Aucun matériel pour le moment. Ajoutez-en un ci-dessus.</div>
+    </section>
+
+    <section class="block">
+      <h3>Réapprovisionner le matériel</h3>
+      <div class="helptext">Le coût de la quantité ajoutée est compté automatiquement comme dépense.</div>
+      <form class="inline-form" id="formRestockMateriel">
+        <div class="row2">
+          <div>
+            <label>Matériel</label>
+            <select id="restockMateriel" required></select>
+          </div>
+          <div>
+            <label>Quantité ajoutée</label>
+            <input type="number" id="restockMatQte" min="1" step="1" required>
+          </div>
+        </div>
+        <button type="submit" class="primary">Ajouter au stock</button>
+      </form>
+    </section>
+  </div>
+
   <!-- DEPENSES -->
   <div class="panel" id="panel-depenses">
     <section class="block">
@@ -272,7 +325,7 @@
 
 <script>
 const STORAGE_KEY = 'lacte-gestion-data';
-let state = { products: [], sales: [], expenses: [] };
+let state = { products: [], sales: [], expenses: [], materials: [] };
 let saveTimer = null;
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -287,6 +340,7 @@ async function loadState(){
       state.products = state.products || [];
       state.sales = state.sales || [];
       state.expenses = state.expenses || [];
+      state.materials = state.materials || [];
     } else {
       seedDefaults();
       persist();
@@ -305,7 +359,12 @@ function seedDefaults(){
       { id: uid(), name:'Pot de lait caillé 20kg', unit:'pot', cost:6800, price:17000, stock:0 }
     ],
     sales: [],
-    expenses: []
+    expenses: [],
+    materials: [
+      { id: uid(), name:'Seau 1kg', unit:'unité', unitPrice:300, stock:0 },
+      { id: uid(), name:'Seau 5kg', unit:'unité', unitPrice:1067, stock:0 },
+      { id: uid(), name:'Seau 20kg', unit:'unité', unitPrice:0, stock:0 }
+    ]
   };
 }
 
@@ -335,6 +394,8 @@ function renderAll(){
   renderProduits();
   renderVentes();
   renderDepenses();
+  renderMaterialSelects();
+  renderMateriel();
 }
 
 function renderDashboard(){
@@ -396,6 +457,32 @@ function renderProduits(){
         <button class="edit-btn" onclick="editStock('${p.id}')" title="Modifier le stock">✎</button>
       </td>
       <td><button class="del-btn" onclick="deleteProduct('${p.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMaterialSelects(){
+  const sel = document.getElementById('restockMateriel');
+  const current = sel.value;
+  sel.innerHTML = state.materials.map(m=>`<option value="${m.id}">${escapeHtml(m.name)} (${escapeHtml(m.unit)})</option>`).join('');
+  if(current) sel.value = current;
+}
+
+function renderMateriel(){
+  const tbody = document.getElementById('tblMateriel');
+  const empty = document.getElementById('emptyMateriel');
+  if(state.materials.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = state.materials.map(m=>{
+    const low = m.stock <= 2;
+    return `<tr>
+      <td>${escapeHtml(m.name)}</td>
+      <td class="num">${fmt(m.unitPrice)}<button class="edit-btn" onclick="editMaterialField('${m.id}','unitPrice')" title="Modifier le prix">✎</button></td>
+      <td class="num">
+        <span class="pill ${low?'low':'ok'}">${m.stock} ${escapeHtml(m.unit)}</span>
+        <button class="edit-btn" onclick="editMaterialField('${m.id}','stock')" title="Modifier le stock">✎</button>
+      </td>
+      <td><button class="del-btn" onclick="deleteMaterial('${m.id}')" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('');
 }
@@ -520,6 +607,43 @@ document.getElementById('formRestock').addEventListener('submit', e=>{
   renderAll(); scheduleSave();
 });
 
+document.getElementById('formMateriel').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = document.getElementById('matNom').value.trim();
+  const unit = document.getElementById('matUnite').value.trim() || 'unité';
+  const unitPrice = Number(document.getElementById('matPrix').value)||0;
+  const stock = Number(document.getElementById('matStock').value)||0;
+  state.materials.push({ id: uid(), name, unit, unitPrice, stock });
+  if(stock > 0 && unitPrice > 0){
+    state.expenses.push({
+      id: uid(), date: todayStr(),
+      desc: `Matériel : ${name} (${stock} ${unit})`,
+      amount: unitPrice*stock, auto: true
+    });
+  }
+  e.target.reset();
+  document.getElementById('matUnite').value = 'unité';
+  renderAll(); scheduleSave();
+});
+
+document.getElementById('formRestockMateriel').addEventListener('submit', e=>{
+  e.preventDefault();
+  const m = state.materials.find(m=>m.id===document.getElementById('restockMateriel').value);
+  const qty = Number(document.getElementById('restockMatQte').value);
+  if(m && qty>0){
+    m.stock += qty;
+    if(m.unitPrice > 0){
+      state.expenses.push({
+        id: uid(), date: todayStr(),
+        desc: `Matériel : ${m.name} (${qty} ${m.unit})`,
+        amount: m.unitPrice*qty, auto: true
+      });
+    }
+  }
+  e.target.reset();
+  renderAll(); scheduleSave();
+});
+
 document.getElementById('formDepense').addEventListener('submit', e=>{
   e.preventDefault();
   state.expenses.push({
@@ -561,6 +685,24 @@ function editStock(id){
   const value = Number(input);
   if(isNaN(value) || value < 0){ alert('Merci d\'entrer un nombre valide.'); return; }
   p.stock = value;
+  renderAll(); scheduleSave();
+}
+
+function editMaterialField(id, field){
+  const m = state.materials.find(x=>x.id===id);
+  if(!m) return;
+  const label = field === 'unitPrice' ? 'prix unitaire' : 'stock';
+  const input = prompt(`Nouveau ${label} pour "${m.name}"${field==='unitPrice'?' (F)':''} :`, m[field]);
+  if(input === null) return;
+  const value = Number(input);
+  if(isNaN(value) || value < 0){ alert('Merci d\'entrer un nombre valide.'); return; }
+  m[field] = value;
+  renderAll(); scheduleSave();
+}
+
+function deleteMaterial(id){
+  if(!confirm('Supprimer ce matériel ?')) return;
+  state.materials = state.materials.filter(m=>m.id!==id);
   renderAll(); scheduleSave();
 }
 
