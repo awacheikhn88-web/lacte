@@ -100,6 +100,13 @@
   .del-btn:hover{ opacity:1; }
   .edit-btn{ background:none; border:none; color:var(--gold-deep); cursor:pointer; font-size:13px; padding:2px 4px; line-height:1; opacity:.75; margin-left:2px; }
   .edit-btn:hover{ opacity:1; }
+  .pay-btn{
+    display:block; margin-top:5px; background:var(--gold); color:#fff; border:none;
+    border-radius:7px; padding:6px 9px; font-size:11.5px; font-weight:700;
+    cursor:pointer; font-family:'Inter',sans-serif; text-align:left; width:100%;
+  }
+  .pay-btn:hover{ background:var(--gold-deep); }
+  .pay-btn:active{ transform:scale(0.98); }
   .empty{ color:var(--ink-soft); font-size:13px; padding:14px 4px; text-align:center; }
   .pill{ display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; }
   .pill.ok{ background:var(--green-bg); color:var(--green); }
@@ -109,9 +116,39 @@
   .pill.auto{ background:#EFE7D8; color:var(--gold-deep); }
   .helptext{ font-size:11.5px; color:var(--ink-soft); margin:-6px 0 10px; }
   footer{ text-align:center; font-size:11px; color:var(--ink-soft); padding:10px 0 30px; }
+
+  .access-overlay{
+    position:fixed; inset:0; background:var(--teal);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; padding:20px;
+  }
+  .access-card{
+    background:var(--paper); border-radius:16px; padding:32px 26px;
+    max-width:320px; width:100%; text-align:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.3);
+  }
+  .access-icon{ font-size:32px; margin-bottom:6px; }
+  .access-card h2{ margin:0 0 6px; font-size:20px; color:var(--teal); }
+  .access-card p{ font-size:13px; color:var(--ink-soft); margin:0 0 16px; }
+  .access-card form{ display:grid; gap:10px; }
+  .access-card input{ text-align:center; font-size:16px; letter-spacing:.1em; }
+  .access-error{ color:var(--rust); font-size:12.5px; margin-top:10px; font-weight:600; }
 </style>
 </head>
 <body>
+
+<div id="accessOverlay" class="access-overlay">
+  <div class="access-card">
+    <div class="access-icon">🔒</div>
+    <h2>Accès privé</h2>
+    <p>Entrez le code pour accéder à votre gestion.</p>
+    <form id="accessForm">
+      <input type="password" id="accessInput" placeholder="Code d'accès" autocomplete="off" required>
+      <button type="submit" class="primary">Déverrouiller</button>
+    </form>
+    <div id="accessError" class="access-error" style="display:none;">Code incorrect, réessayez.</div>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -143,6 +180,7 @@
     <button class="tab-btn active" data-tab="ventes">Ventes</button>
     <button class="tab-btn" data-tab="produits">Produits &amp; stock</button>
     <button class="tab-btn" data-tab="materiel">Matériel</button>
+    <button class="tab-btn" data-tab="paiements">Paiements</button>
     <button class="tab-btn" data-tab="depenses">Dépenses</button>
   </div>
 
@@ -150,6 +188,7 @@
   <div class="panel active" id="panel-ventes">
     <section class="block">
       <h3>Enregistrer une vente</h3>
+      <div class="helptext" id="venteRemainingSummary" style="display:none;"></div>
       <form class="inline-form" id="formVente">
         <div class="row2">
           <div>
@@ -172,10 +211,24 @@
           </div>
         </div>
         <div id="venteStockInfo" class="helptext"></div>
+        <div class="row2">
+          <div>
+            <label>Nom du client</label>
+            <input type="text" id="venteClientNom" placeholder="ex : Fatou Diop">
+          </div>
+          <div>
+            <label>Téléphone</label>
+            <input type="tel" id="venteClientTel" placeholder="ex : 77 123 45 67">
+          </div>
+        </div>
+        <div>
+          <label>Contact / adresse (facultatif)</label>
+          <input type="text" id="venteClientAdresse" placeholder="ex : Grand Mbao, près du marché">
+        </div>
         <button type="submit" class="primary">Ajouter la vente</button>
       </form>
       <table>
-        <thead><tr><th>Date</th><th>Produit</th><th class="num">Qté</th><th class="num">Total</th><th>Statut</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Produit / Client</th><th class="num">Qté</th><th class="num">Total</th><th>Statut</th><th></th></tr></thead>
         <tbody id="tblVentes"></tbody>
       </table>
       <div class="empty" id="emptyVentes" style="display:none;">Aucune vente enregistrée pour le moment.</div>
@@ -290,6 +343,22 @@
     </section>
   </div>
 
+  <!-- PAIEMENTS -->
+  <div class="panel" id="panel-paiements">
+    <div class="cards" style="margin-top:0;">
+      <div class="card profit"><div class="label">Argent récupéré</div><div class="value" id="cardRecupere">0 F</div></div>
+      <div class="card expense"><div class="label">Reste à récupérer</div><div class="value" id="cardAReucperer">0 F</div></div>
+    </div>
+    <section class="block">
+      <h3>Clients qui doivent de l'argent</h3>
+      <table>
+        <thead><tr><th>Client</th><th>Produit</th><th class="num">Total</th><th class="num">Reste</th><th></th></tr></thead>
+        <tbody id="tblPaiements"></tbody>
+      </table>
+      <div class="empty" id="emptyPaiements" style="display:none;">Tout le monde a payé en entier. 🎉</div>
+    </section>
+  </div>
+
   <!-- DEPENSES -->
   <div class="panel" id="panel-depenses">
     <section class="block">
@@ -325,31 +394,38 @@
 
 <script>
 const STORAGE_KEY = 'lacte-gestion-data';
+
+/* ---------- ACCESS CODE ---------- */
+/* Change this value to set your own access code. */
+const ACCESS_CODE = "sowpur2026";
+const ACCESS_KEY = 'lacte-access-granted';
+
+(function accessGate(){
+  const overlay = document.getElementById('accessOverlay');
+  if(localStorage.getItem(ACCESS_KEY) === '1'){
+    overlay.style.display = 'none';
+    return;
+  }
+  document.getElementById('accessForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const val = document.getElementById('accessInput').value.trim();
+    if(val === ACCESS_CODE){
+      localStorage.setItem(ACCESS_KEY, '1');
+      overlay.style.display = 'none';
+    } else {
+      document.getElementById('accessError').style.display = 'block';
+      document.getElementById('accessInput').value = '';
+    }
+  });
+})();
+
 let state = { products: [], sales: [], expenses: [], materials: [] };
 let saveTimer = null;
+let applyingRemoteUpdate = false;
 
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmt(n){ return Math.round(n).toLocaleString('fr-FR') + ' F'; }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
-
-async function loadState(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      state = JSON.parse(raw);
-      state.products = state.products || [];
-      state.sales = state.sales || [];
-      state.expenses = state.expenses || [];
-      state.materials = state.materials || [];
-    } else {
-      seedDefaults();
-      persist();
-    }
-  }catch(e){
-    seedDefaults();
-  }
-  renderAll();
-}
 
 function seedDefaults(){
   state = {
@@ -368,16 +444,45 @@ function seedDefaults(){
   };
 }
 
+// Called once Firebase (auth + Firestore) is ready — see the module script below.
+window.initApp = function(){
+  const dot = document.getElementById('saveDot');
+  const label = document.getElementById('saveLabel');
+  label.textContent = 'connexion...';
+
+  window.fb.onSnapshot(window.fb.docRef, (snap)=>{
+    if(snap.exists()){
+      const data = snap.data();
+      state = {
+        products: data.products || [],
+        sales: data.sales || [],
+        expenses: data.expenses || [],
+        materials: data.materials || []
+      };
+    } else {
+      seedDefaults();
+      persist();
+    }
+    applyingRemoteUpdate = true;
+    renderAll();
+    applyingRemoteUpdate = false;
+    label.textContent = 'à jour';
+  }, (err)=>{
+    label.textContent = 'hors ligne';
+  });
+};
+
 async function persist(){
+  if(applyingRemoteUpdate) return;
   const dot = document.getElementById('saveDot');
   const label = document.getElementById('saveLabel');
   label.textContent = 'enregistrement...';
   dot.style.opacity = '1';
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    await window.fb.setDoc(window.fb.docRef, state);
     label.textContent = 'à jour';
   }catch(e){
-    label.textContent = 'erreur de sauvegarde';
+    label.textContent = 'hors ligne (non enregistré)';
   }
   setTimeout(()=>{ dot.style.opacity = '0.35'; }, 600);
 }
@@ -396,6 +501,7 @@ function renderAll(){
   renderDepenses();
   renderMaterialSelects();
   renderMateriel();
+  renderPaiements();
 }
 
 function renderDashboard(){
@@ -496,13 +602,64 @@ function renderVentes(){
   tbody.innerHTML = sorted.map(v=>{
     const p = state.products.find(p=>p.id===v.productId);
     const total = v.qty*v.price;
+    const paid = v.paid || 0;
+    const remaining = total - paid;
     const delivered = v.status === 'livre';
+    const clientLine = v.clientName || v.clientPhone
+      ? `<div class="muted" style="font-size:11px;">
+          ${v.clientName?escapeHtml(v.clientName):''}${v.clientName&&v.clientPhone?' · ':''}${v.clientPhone?`<a href="tel:${escapeHtml(v.clientPhone)}" style="color:inherit;">${escapeHtml(v.clientPhone)}</a>`:''}
+        </div>`
+      : '';
+    const paymentLine = remaining<=0
+      ? `<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:3px;">✓ Payé en entier</div>`
+      : `<button class="pay-btn" onclick="editPayment('${v.id}')">💰 Reçu ${fmt(paid)} · reste ${fmt(remaining)} — enregistrer</button>`;
     return `<tr>
       <td>${formatDate(v.date)}</td>
-      <td>${p ? escapeHtml(p.name) : '<span class="muted">produit supprimé</span>'}</td>
+      <td>${p ? escapeHtml(p.name) : '<span class="muted">produit supprimé</span>'}${clientLine}</td>
       <td class="num">${v.qty}</td>
-      <td class="num">${fmt(total)}</td>
+      <td class="num">${fmt(total)}${paymentLine}</td>
       <td><span class="pill status ${delivered?'ok':'low'}" onclick="toggleSaleStatus('${v.id}')" title="Cliquer pour changer">${delivered?'Livré':'En cours'}</span></td>
+      <td><button class="del-btn" onclick="deleteSale('${v.id}')" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+  const totalRemaining = state.sales.reduce((s,v)=> s + Math.max(0,(v.qty*v.price) - (v.paid||0)), 0);
+  const summary = document.getElementById('venteRemainingSummary');
+  if(summary){
+    if(totalRemaining > 0){
+      summary.style.display='block';
+      summary.textContent = `💰 Reste à récupérer sur l'ensemble des ventes : ${fmt(totalRemaining)}`;
+    } else {
+      summary.style.display='none';
+    }
+  }
+}
+
+function renderPaiements(){
+  const totalRecupere = state.sales.reduce((s,v)=> s + (v.paid||0), 0);
+  const totalArecuperer = state.sales.reduce((s,v)=> s + Math.max(0, (v.qty*v.price) - (v.paid||0)), 0);
+  document.getElementById('cardRecupere').textContent = fmt(totalRecupere);
+  document.getElementById('cardAReucperer').textContent = fmt(totalArecuperer);
+
+  const tbody = document.getElementById('tblPaiements');
+  const empty = document.getElementById('emptyPaiements');
+  const owing = state.sales
+    .map(v=>({ v, remaining: (v.qty*v.price) - (v.paid||0) }))
+    .filter(x=> x.remaining > 0)
+    .sort((a,b)=> b.remaining - a.remaining);
+
+  if(owing.length===0){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  tbody.innerHTML = owing.map(({v,remaining})=>{
+    const p = state.products.find(p=>p.id===v.productId);
+    const total = v.qty*v.price;
+    const clientLabel = v.clientName || v.clientPhone
+      ? `${v.clientName?escapeHtml(v.clientName):'<span class="muted">Client sans nom</span>'}${v.clientPhone?`<div class="muted" style="font-size:11px;"><a href="tel:${escapeHtml(v.clientPhone)}" style="color:inherit;">${escapeHtml(v.clientPhone)}</a></div>`:''}`
+      : '<span class="muted">Client sans nom</span>';
+    return `<tr>
+      <td>${clientLabel}</td>
+      <td>${p ? escapeHtml(p.name) : '<span class="muted">—</span>'}</td>
+      <td class="num">${fmt(total)}</td>
+      <td class="num" style="color:var(--rust);font-weight:700;">${fmt(remaining)}<button class="pay-btn" style="margin-top:4px;" onclick="editPayment('${v.id}')">Enregistrer un paiement</button></td>
       <td><button class="del-btn" onclick="deleteSale('${v.id}')" title="Supprimer">✕</button></td>
     </tr>`;
   }).join('');
@@ -578,10 +735,10 @@ document.getElementById('formVente').addEventListener('submit', e=>{
   const p = state.products.find(p=>p.id===productId);
   if(!p){ alert('Ajoutez d\'abord un produit.'); return; }
   const price = priceInput.value ? Number(priceInput.value) : p.price;
-  if(qty > p.stock){
-    if(!confirm(`Le stock actuel est de ${p.stock} ${p.unit}. Enregistrer quand même la vente de ${qty} ?`)) return;
-  }
-  state.sales.push({ id: uid(), productId, date: document.getElementById('venteDate').value || todayStr(), qty, price, status:'en_cours' });
+  const clientName = document.getElementById('venteClientNom').value.trim();
+  const clientPhone = document.getElementById('venteClientTel').value.trim();
+  const clientAddress = document.getElementById('venteClientAdresse').value.trim();
+  state.sales.push({ id: uid(), productId, date: document.getElementById('venteDate').value || todayStr(), qty, price, status:'en_cours', clientName, clientPhone, clientAddress, paid: 0 });
   p.stock = Math.max(0, p.stock - qty);
   e.target.reset();
   priceInput.dataset.touched = '';
@@ -657,6 +814,19 @@ document.getElementById('formDepense').addEventListener('submit', e=>{
   document.getElementById('depDate').value = todayStr();
   renderAll(); scheduleSave();
 });
+
+function editPayment(id){
+  const v = state.sales.find(v=>v.id===id);
+  if(!v) return;
+  const total = v.qty*v.price;
+  const input = prompt(`Montant total reçu à ce jour pour cette vente (Total : ${fmt(total)}) :`, v.paid||0);
+  if(input === null) return;
+  let value = Number(input);
+  if(isNaN(value) || value < 0){ alert('Merci d\'entrer un nombre valide.'); return; }
+  if(value > total) value = total;
+  v.paid = value;
+  renderAll(); scheduleSave();
+}
 
 function toggleSaleStatus(id){
   const v = state.sales.find(v=>v.id===id);
@@ -738,7 +908,49 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 /* ---------- INIT ---------- */
 document.getElementById('venteDate').value = todayStr();
 document.getElementById('depDate').value = todayStr();
-loadState();
+/* Firebase calls window.initApp() once ready — see module script below. */
 </script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+  import {
+    getAuth, signInAnonymously, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCtSkR52Fg4EtlHZ-W4UeUHLQUurgnVQd0",
+    authDomain: "lacte-67eb9.firebaseapp.com",
+    projectId: "lacte-67eb9",
+    storageBucket: "lacte-67eb9.firebasestorage.app",
+    messagingSenderId: "815495874906",
+    appId: "1:815495874906:web:9cbdacece1b74398d08b63"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // Shared document: same data on every device, as long as each device
+  // signs in anonymously (required by the security rules) and points to
+  // this same fixed path.
+  const docRef = doc(db, "lacte", "gestion-ventes");
+
+  window.fb = { db, docRef, setDoc, onSnapshot };
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      window.initApp();
+    }
+  });
+
+  signInAnonymously(auth).catch(()=>{
+    const label = document.getElementById('saveLabel');
+    if(label) label.textContent = 'connexion impossible';
+  });
+</script>
+
 </body>
 </html>
